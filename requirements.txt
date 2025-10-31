@@ -1,8 +1,4 @@
-# Telegram bot
 python-telegram-bot==20.5
-
-# Peticiones HTTP
 requests==2.31.0
-
-# Google Gemini API
 google-generativeai==0.8.5
+
