@@ -1,40 +1,35 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from flask import Flask, request
+from telegram import Update, Bot
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, filters
 import google.generativeai as genai
 import requests
 import os
 
-# 🔑 Cargar claves desde las variables de entorno en Render
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY")
+# 🔑 Variables de entorno (las configuras en Render)
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY")
 
-# 🚨 Verificación básica
-if not TELEGRAM_TOKEN or not GEMINI_API_KEY or not API_FOOTBALL_KEY:
-    raise ValueError("❌ Faltan una o más API keys. Verifica tus variables de entorno en Render.")
-
-# ⚙️ Configurar Gemini
+# Configurar Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
-# 🧠 Función para generar respuesta con Gemini
+# ⚽ Funciones de fútbol
 def generar_respuesta_gemini(pregunta):
     try:
         modelo = genai.GenerativeModel("models/gemini-2.5-flash")
         respuesta = modelo.generate_content(
-            f"Responde de forma breve, actualizada y experta sobre fútbol: {pregunta}"
+            f"Responde de forma breve y experta sobre fútbol: {pregunta}"
         )
         return respuesta.text
     except Exception as e:
         return f"❌ Error al generar respuesta: {e}"
 
-# ⚽ Función para obtener información del Club América
 def obtener_info_america():
     try:
         url = "https://v3.football.api-sports.io/teams?search=america"
         headers = {"x-apisports-key": API_FOOTBALL_KEY}
         r = requests.get(url, headers=headers)
         data = r.json()
-
         if data.get("response"):
             equipo = data["response"][0]["team"]
             nombre = equipo["name"]
@@ -45,49 +40,63 @@ def obtener_info_america():
     except Exception as e:
         return f"⚠️ Error al consultar API-FOOTBALL: {e}"
 
-# 🏁 Comando /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("⚽ ¡Hola! Soy tu bot de fútbol. Pregúntame lo que quieras sobre el mundo del fútbol.")
+# 🚀 Flask
+app = Flask(__name__)
+bot = Bot(token=TELEGRAM_TOKEN)
+dispatcher = Dispatcher(bot, None, use_context=True)
 
-# 📝 Comando /help
-async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
+# /start
+def start(update: Update, context):
+    update.message.reply_text("⚽ ¡Hola! Soy tu bot de fútbol. Pregúntame lo que quieras sobre el mundo del fútbol.")
+
+# /help
+def help_command(update: Update, context):
+    update.message.reply_text(
         "📋 Puedes preguntarme cosas como:\n"
         "- ¿Quién ganó el mundial 2010?\n"
         "- ¿Cuántos títulos tiene el América?\n"
         "- Resultados recientes de equipos o ligas."
     )
 
-# 💬 Responder preguntas
-async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Mensajes generales
+def responder(update: Update, context):
     pregunta = update.message.text.lower()
-
-    # 🚫 Solo responde sobre fútbol
     temas_futbol = ["futbol", "fútbol", "liga", "mundial", "gol", "jugador", "américa", "real madrid", "barcelona", "chivas", "equipo", "partido"]
     if not any(palabra in pregunta for palabra in temas_futbol):
-        await update.message.reply_text("⚠️ Solo respondo preguntas sobre fútbol ⚽😉")
+        update.message.reply_text("⚠️ Solo respondo preguntas sobre fútbol ⚽😉")
         return
 
-    # ⚽ Si preguntan por América
     if "américa" in pregunta:
         respuesta = obtener_info_america()
-        await update.message.reply_text(respuesta, parse_mode="Markdown")
+        update.message.reply_text(respuesta, parse_mode="Markdown")
         return
 
-    # 💡 Si no, usa Gemini
     respuesta = generar_respuesta_gemini(pregunta)
-    await update.message.reply_text(respuesta)
+    update.message.reply_text(respuesta)
 
-# 🚀 Iniciar el bot
-def main():
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+# Handlers
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(CommandHandler("help", help_command))
+dispatcher.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder))
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder))
+# Ruta para recibir los webhooks de Telegram
+@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "ok"
 
-    print("🤖 Bot de fútbol iniciado...")
-    app.run_polling()
+# Ruta principal para pruebas
+@app.route("/")
+def index():
+    return "Bot de fútbol corriendo 🔥"
+
+if __name__ == "__main__":
+    # Puerto que Render asigna
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
 
 if __name__ == "__main__":
     main()
+
