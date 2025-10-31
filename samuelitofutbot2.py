@@ -5,7 +5,7 @@ import google.generativeai as genai
 import requests
 import os
 
-# 🔑 Variables de entorno (las configuras en Render)
+# 🔑 Variables de entorno (configuradas en Render)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY")
@@ -92,11 +92,5 @@ def index():
     return "Bot de fútbol corriendo 🔥"
 
 if __name__ == "__main__":
-    # Puerto que Render asigna
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-
-if __name__ == "__main__":
-    main()
-
