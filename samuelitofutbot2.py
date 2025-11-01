@@ -1,4 +1,6 @@
 import os
+from threading import Thread
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import google.generativeai as genai
@@ -42,7 +44,18 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     respuesta = generar_respuesta_gemini(pregunta)
     await update.message.reply_text(respuesta)
 
-# Función principal
+# 🖥️ Flask App para mantener Render activo
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def home():
+    return "✅ Bot de fútbol activo y corriendo correctamente.", 200
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    flask_app.run(host="0.0.0.0", port=port)
+
+# ⚙️ Función principal del bot
 def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
@@ -51,17 +64,16 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder))
 
-    # Puerto de Render
-    PORT = int(os.environ.get("PORT", 10000))
-
     # Iniciar webhook
     print("🤖 Bot de fútbol iniciado con Webhook...")
     app.run_webhook(
         listen="0.0.0.0",
-        port=PORT,
+        port=int(os.environ.get("PORT", 10000)),
         url_path="webhook",
         webhook_url=WEBHOOK_URL
     )
 
+# 🚀 Lanzar Flask y Bot en paralelo
 if __name__ == "__main__":
+    Thread(target=run_flask).start()
     main()
