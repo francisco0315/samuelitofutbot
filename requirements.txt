@@ -1,4 +1,5 @@
 python-telegram-bot
 google-generativeai
-requests
 Flask
+requests
+gunicorn
