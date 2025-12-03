@@ -6,6 +6,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 import google.generativeai as genai
 
 # 🔑 Configurar keys desde variables de entorno
+# Se asume que estas variables de entorno están configuradas en Render.
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 WEBHOOK_URL = os.environ["WEBHOOK_URL"] # URL base de tu servicio en Render
@@ -15,24 +16,24 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 # --- Lógica de Gemini ---
 
-# Función síncrona para generar respuesta con Gemini (enfocada en fútbol)
+# Función síncrona para generar respuesta con Gemini (enfocada en fútbol, sin auto-filtro estricto)
 def generar_respuesta_gemini(pregunta):
     try:
         modelo = genai.GenerativeModel("models/gemini-2.5-flash")
         
-        # ⚽️ PROMPT MEJORADO: Establece el rol de experto en fútbol (incluyendo ligas y jugadores)
-        # y pide una respuesta experta, resolviendo el problema de la detección estricta inicial.
-        prompt_mejorado = (
+        # ⚽️ PROMPT MEJORADO: Establece el rol de experto en fútbol y elimina la instrucción 
+        # de responder con el mensaje de error "⚠️ Solo respondo preguntas sobre fútbol ⚽️🌕".
+        # Ahora el bot responderá a todas las preguntas de fútbol sin el rechazo anterior.
+        prompt_final = (
             "Eres un experto en fútbol mundial (ligas, jugadores, resultados, historia, etc.). "
-            "Responde a la siguiente pregunta sobre fútbol de forma experta. "
-            "Si la pregunta no trata sobre fútbol, responde con: 'Por favor, pregúntame solo sobre fútbol.'\n\n"
+            "Responde a la siguiente pregunta de forma experta, enfocándote en el contexto futbolístico. "
+            "Si el tema está fuera de tu experiencia o es muy ambiguo, responde de forma concisa.\n\n"
             f"Pregunta: {pregunta}"
         )
         
-        respuesta = modelo.generate_content(prompt_mejorado)
+        respuesta = modelo.generate_content(prompt_final)
         return respuesta.text
     except Exception as e:
-        # Aquí no retornamos una f-string para evitar posibles conflictos de formato
         return "❌ Error al generar respuesta de Gemini."
 
 # --- Comandos y Handlers de Telegram ---
@@ -44,7 +45,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 📋 Mensaje de ayuda específico de fútbol, como lo solicitaste
+    # Mensaje de ayuda específico de fútbol
     await update.message.reply_text(
         "📋 Puedes preguntarme cosas sobre fútbol mundial, como:\n"
         "- Resultados y tablas de posiciones de ligas (e.g., Liga MX, Premier League).\n"
