@@ -6,7 +6,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 import google.generativeai as genai
 
 # 🔑 Configurar keys desde variables de entorno
-# Se asume que estas variables de entorno están configuradas en Render.
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 WEBHOOK_URL = os.environ["WEBHOOK_URL"] # URL base de tu servicio en Render
@@ -16,13 +15,23 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 # --- Lógica de Gemini ---
 
-# Función síncrona para generar respuesta con Gemini (solo fútbol)
+# Función síncrona para generar respuesta con Gemini (enfocada en fútbol)
 def generar_respuesta_gemini(pregunta):
     try:
         modelo = genai.GenerativeModel("models/gemini-2.5-flash")
-        respuesta = modelo.generate_content(
-            f"Responde de forma experta y solo sobre fútbol: {pregunta}"
+        
+        # ⚽️ PROMPT MEJORADO: Ahora es más flexible y permite detalles
+        # Se elimina la restricción "solo sobre fútbol" y se pide responder
+        # a cualquier pregunta de fútbol, incluyendo equipos, ligas y jugadores.
+        # Si la pregunta no es de fútbol, se le pide que lo indique.
+        prompt_mejorado = (
+            "Eres un experto en fútbol mundial (ligas, jugadores, resultados, historia, etc.). "
+            "Responde a la siguiente pregunta sobre fútbol de forma experta. "
+            "Si la pregunta no trata sobre fútbol, responde con: 'Por favor, pregúntame solo sobre fútbol.'\n\n"
+            f"Pregunta: {pregunta}"
         )
+        
+        respuesta = modelo.generate_content(prompt_mejorado)
         return respuesta.text
     except Exception as e:
         # Aquí no retornamos una f-string para evitar posibles conflictos de formato
@@ -31,16 +40,17 @@ def generar_respuesta_gemini(pregunta):
 # --- Comandos y Handlers de Telegram ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Mensaje de bienvenida ajustado
     await update.message.reply_text(
-        "⚽ ¡Hola! Soy tu bot de fútbol. Pregúntame lo que quieras sobre el fútbol y te respondo."
+        "⚽ ¡Hola! Soy tu bot de fútbol mundial experto en ligas como la Liga MX, Premier League, Champions, etc. Pregúntame lo que quieras sobre el fútbol y te respondo."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📋 Puedes preguntarme cosas como:\n"
-        "- Resultados recientes de equipos o ligas.\n"
-        "- Información de jugadores y clubes.\n"
-        "- Estadísticas y curiosidades futbolísticas."
+        "📋 Puedes preguntarme cosas sobre fútbol mundial, como:\n"
+        "- Resultados y tablas de posiciones de ligas (e.g., Liga MX, Premier League).\n"
+        "- Información y estadísticas de jugadores (e.g., ¿Quién es el máximo goleador de la Champions?).\n"
+        "- Historia de clubes y competiciones (e.g., ¿Quién ganó la Champions en 2005?)."
     )
 
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -121,5 +131,3 @@ def run_setup_and_flask():
 # 🚀 Lanzar la Aplicación Principal
 if __name__ == "__main__":
     run_setup_and_flask()
-
-
