@@ -20,10 +20,8 @@ def generar_respuesta_gemini(pregunta):
     try:
         modelo = genai.GenerativeModel("models/gemini-2.5-flash")
         
-        # ⚽️ PROMPT MEJORADO: Ahora es más flexible y permite detalles
-        # Se elimina la restricción "solo sobre fútbol" y se pide responder
-        # a cualquier pregunta de fútbol, incluyendo equipos, ligas y jugadores.
-        # Si la pregunta no es de fútbol, se le pide que lo indique.
+        # ⚽️ PROMPT MEJORADO: Establece el rol de experto en fútbol (incluyendo ligas y jugadores)
+        # y pide una respuesta experta, resolviendo el problema de la detección estricta inicial.
         prompt_mejorado = (
             "Eres un experto en fútbol mundial (ligas, jugadores, resultados, historia, etc.). "
             "Responde a la siguiente pregunta sobre fútbol de forma experta. "
@@ -40,12 +38,13 @@ def generar_respuesta_gemini(pregunta):
 # --- Comandos y Handlers de Telegram ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Mensaje de bienvenida ajustado
+    # Mensaje de bienvenida específico de fútbol
     await update.message.reply_text(
         "⚽ ¡Hola! Soy tu bot de fútbol mundial experto en ligas como la Liga MX, Premier League, Champions, etc. Pregúntame lo que quieras sobre el fútbol y te respondo."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # 📋 Mensaje de ayuda específico de fútbol, como lo solicitaste
     await update.message.reply_text(
         "📋 Puedes preguntarme cosas sobre fútbol mundial, como:\n"
         "- Resultados y tablas de posiciones de ligas (e.g., Liga MX, Premier League).\n"
